@@ -1,5 +1,14 @@
 const fetch = require("node-fetch");
 
+// Simple helper to define an API easily
+const makeApi = ({ name, url, method, headers, getBody }) => ({
+  name,
+  url,
+  method,
+  headers,
+  body: (phone) => getBody(phone),
+});
+
 exports.handler = async (event) => {
   const method = event.httpMethod;
   let phone;
@@ -17,66 +26,45 @@ exports.handler = async (event) => {
     };
   }
 
+  // ✅ Define all APIs here
+  const apis = [
+    makeApi({
+      name: "khatabook",
+      url: "https://api.khatabook.com/v1/auth/request-otp",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      getBody: (phone) =>
+        JSON.stringify({
+          app_signature: "Jc/Zu7qNqQ2",
+          country_code: "+91",
+          phone: phone,
+        }),
+    }),
+    
+    makeApi({
+      name: "samsung",
+      url: "https://www.samsung.com/in/api/v1/sso/otp/init",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      getBody: (phone) => JSON.stringify({ user_id: phone }),
+    }),
+    // 🆕 Add more APIs here like this 👇
+    // makeApi({ ... })
+  ];
+
   let results = [];
 
-  // 1. Meesho
-  try {
-    const meesho = await fetch("https://www.meesho.com/api/v1/user/login/request-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone_number: phone }),
-    });
-    results.push({ meesho: meesho.status });
-  } catch (err) {
-    results.push({ meesho: "error" });
-  }
-
-  // 2. Bewakoof
-  try {
-    const bewakoof = await fetch("https://api-prod.bewakoof.com/v3/user/auth/login/otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile: phone, country_code: "+91" }),
-    });
-    results.push({ bewakoof: bewakoof.status });
-  } catch (err) {
-    results.push({ bewakoof: "error" });
-  }
-
-  // 3. Blinkit
-  try {
-    const blinkit = await fetch("https://blinkit.com/v2/accounts/", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `user_phone=${phone}`,
-    });
-    results.push({ blinkit: blinkit.status });
-  } catch (err) {
-    results.push({ blinkit: "error" });
-  }
-
-  // 4. Samsung
-  try {
-    const samsung = await fetch("https://www.samsung.com/in/api/v1/sso/otp/init", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: phone }),
-    });
-    results.push({ samsung: samsung.status });
-  } catch (err) {
-    results.push({ samsung: "error" });
-  }
-
-  // 5. Swiggy
-  try {
-    const swiggy = await fetch("https://profile.swiggy.com/api/v3/app/request_call_verification", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile: phone }),
-    });
-    results.push({ swiggy: swiggy.status });
-  } catch (err) {
-    results.push({ swiggy: "error" });
+  for (const api of apis) {
+    try {
+      const res = await fetch(api.url, {
+        method: api.method,
+        headers: api.headers,
+        body: api.body(phone),
+      });
+      results.push({ [api.name]: res.status });
+    } catch (err) {
+      results.push({ [api.name]: "error" });
+    }
   }
 
   return {
