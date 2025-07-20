@@ -1,7 +1,15 @@
 const fetch = require("node-fetch");
 
 exports.handler = async (event) => {
-  const { phone } = JSON.parse(event.body || "{}");
+  // Support both GET and POST
+  const method = event.httpMethod;
+  let phone;
+
+  if (method === "GET") {
+    phone = event.queryStringParameters.phone;
+  } else if (method === "POST") {
+    phone = JSON.parse(event.body || "{}").phone;
+  }
 
   if (!phone) {
     return {
